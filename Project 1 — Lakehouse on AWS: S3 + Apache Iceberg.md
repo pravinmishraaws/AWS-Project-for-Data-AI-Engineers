@@ -18,7 +18,7 @@
 
 ```bash
 # ==== change these ====
-export REGION=eu-west-1
+export REGION=eu-north-1
 export NAME=<yourname>
 
 # ==== derived ====
