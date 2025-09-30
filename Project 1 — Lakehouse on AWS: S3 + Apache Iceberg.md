@@ -309,14 +309,12 @@ Your Step 1 Lambda will still log the runs in DynamoDB (now with the date partit
 
 ---
 
-## 3) Transform (Batch) — the exact point it happens
+## 3) Transformation & Data Enrichment
 
 Transform happens when you **run the Glue job** below. You can:
 
 * **Manual (on demand):** start it after each upload.
 * **Automatic:** daily schedule (cron) or **event-driven** via EventBridge when a new `orders` object arrives.
-
-I’ll give you all-CLI artifacts for the Glue job (role + job + script) and both run modes.
 
 ### 3.1 Create an IAM role for Glue
 
@@ -487,7 +485,7 @@ spark.sql(f"""
     "channel","region","category","sales_amount"
 ).writeTo(f"glue_catalog.{SILVER_DB}.orders_silver").append())
 
-print("Transform complete ✅")
+print("Transform complete")
 
 ```
 
@@ -533,7 +531,7 @@ aws glue create-job \
 
 ### 3.5 Run the transform (MANUAL)
 
-### Allow read on the script bucket/prefix
+#### Allow read on the script bucket/prefix
 
 Update the Glue role to include ListBucket + GetObject for the TMP bucket’s jobs/ prefix.
 
