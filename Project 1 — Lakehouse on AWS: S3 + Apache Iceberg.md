@@ -16,6 +16,8 @@
 
 ### 1.0 Set variables
 
+**Note:** Make sure to setup AWS CLI default region same as below. 
+
 ```bash
 # ==== change these ====
 export REGION=eu-north-1
