@@ -881,8 +881,6 @@ WHERE order_date BETWEEN DATE '2025-09-15' AND DATE '2025-09-21';
 
 ## 5) Clean-up (to avoid charges)
 
-Absolutely—here’s a clean, **copy-pasteable CLI teardown** that removes everything you created (and in the right order so dependencies don’t fight you).
-
 > **Before you run:**
 >
 > * Make sure you don’t need the data anymore.
