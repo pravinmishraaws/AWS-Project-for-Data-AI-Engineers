@@ -885,6 +885,9 @@ WHERE order_date BETWEEN DATE '2025-09-15' AND DATE '2025-09-21';
 > * Replace `<yourname>` if you didn’t already export `NAME`.
 > * Run in the **same region** you used for the lab.
 
+You can create `cleanup.sh` file or It is ready to run as-is in your shell.
+
+
 ```bash
 # ========== 0) Vars ==========
 export REGION=eu-north-1
@@ -1005,9 +1008,5 @@ echo "✅ Cleanup attempted. If anything remains, it likely has a dependency or 
 * **Workgroup**: Deleting `retail-wg` is optional; if you keep it, it costs nothing.
 * **S3 versioning**: If you enabled versioning, use the “delete versions” loop above; otherwise simple `rm --recursive` is enough.
 * **Missing jq?** If the versioned-deletes step complains about `jq`, install it or skip the loop if you didn’t enable versioning.
-
-If you want this as a single `cleanup.sh` file, I can format it accordingly, but the snippet above is ready to run as-is in your shell.
-
-
 
 
