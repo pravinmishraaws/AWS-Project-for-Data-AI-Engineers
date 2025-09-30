@@ -6,6 +6,8 @@ You’ll work from a shared, opinionated reference architecture so beginners are
 
 By the end, you’ll have hands-on experience across the modern AWS data stack (S3 + Iceberg, Glue/Athena, Lake Formation, Redshift Serverless, Kinesis/MSK, Flink, DMS, DynamoDB, QuickSight), plus AWS CLI commands together. If you’re aiming for an AWS Data/AI Engineering role, upskilling in your current job, or curating a portfolio that stands out, this course is designed to be both **practical** and **career-relevant**.
 
+<img width="1432" height="806" alt="Screenshot 2025-09-30 at 14 38 18" src="https://github.com/user-attachments/assets/d752fe27-4c8c-4e84-ab79-1afa815891b9" />
+
 ---
 
 ## Project 1 — Lakehouse on AWS: S3 + Apache Iceberg
