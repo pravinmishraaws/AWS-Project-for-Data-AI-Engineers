@@ -6,31 +6,6 @@ You’ll work from a shared, opinionated reference architecture so beginners are
 
 By the end, you’ll have hands-on experience across the modern AWS data stack (S3 + Iceberg, Glue/Athena, Lake Formation, Redshift Serverless, Kinesis/MSK, Flink, DMS, DynamoDB, QuickSight), plus AWS CLI commands together. If you’re aiming for an AWS Data/AI Engineering role, upskilling in your current job, or curating a portfolio that stands out, this course is designed to be both **practical** and **career-relevant**.
 
-# Learning Outcomes
-
-By the end of the course, you will be able to:
-
-* **Design and implement a lakehouse on AWS** with S3 + Apache Iceberg, including partitioning, schema evolution, compaction, and data quality gates.
-* **Apply governance as code** using Lake Formation (tag-based access, column masking, row filters, cross-account sharing) and validate policies in CI.
-* **Model and load analytical warehouses on Redshift Serverless,** using external tables over Iceberg, SCD2 dimensions with MERGE, and performance/cost tuning.
-* **Orchestrate, monitor, and support pipelines,** including retries, idempotency, backfills, late-data handling, incident response, and postmortems.
-* **Build real-time streaming/CDC pipelines** (DMS → Kinesis/MSK → Flink → Iceberg/DynamoDB), with watermarks, exactly-once semantics, and savepoint-based rollbacks.
-
-# Requirements / Prerequisites
-
-* **Basic familiarity** with Python and SQL (comfortable reading/writing simple scripts and queries).
-* **An AWS account** with permissions to create resources (S3, IAM, Glue, Lake Formation, Redshift, Kinesis/MSK, DMS, etc.).
-* **Local tools:** Git, a code editor (VS Code), and a SQL client (we’ll suggest free options).
-
-**Beginner-friendly?** Yes. I provide a ready-to-deploy AWS CLI commands. Each project has a **Core path** (must-have skills) and an optional **Pro path** (deeper operations/optimization) so experienced engineers can stretch without overwhelming newcomers.
-
-# Target Audience
-
-* **Aspiring DATA/AI engineers** who want practical AWS projects for their portfolio.
-* **Software/analytics engineers** moving into cloud DATA/AI engineering.
-* **Working data engineers** upskilling on lakehouse, governance, Redshift, streaming/CDC.
-* **Career switchers** seeking hands-on, resume-ready AWS data experience.
-
 ---
 
 ## Project 1 — Lakehouse on AWS: S3 + Apache Iceberg
@@ -40,7 +15,7 @@ Stand up a production-style lakehouse. Land raw data into S3, transform to Icebe
 
 ---
 
-## Project 2 — Governance as Code with Lake Formation
+## Project 2 — DATA Governance with Lake Formation
 
 **Short Description**
 Enforce fine-grained access to lakehouse data using Lake Formation. Implement tag-based policies, column masking, row filters, and cross-account data sharing—codified and tested in CI.
