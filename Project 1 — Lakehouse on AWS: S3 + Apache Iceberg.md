@@ -9,12 +9,12 @@
 * S3→Lambda eventing and idempotent writes
 * Verifying ingestion lineage via DDB queries
 
-#### Step 1) Buckets + Auto Run-Logging (all CLI)
+## Step 1) Buckets + Auto Run-Logging (all CLI)
 
 > Works in **any region**. Replace `<yourname>` with something unique.
 > Assumes AWS CLI v2 and your profile has admin (or equivalent) permissions.
 
-#### 1.0 Set variables
+### 1.0 Set variables
 
 ```bash
 # ==== change these ====
@@ -32,7 +32,7 @@ export ROLE_NAME=lambda-log-ingestion-run-role
 export POLICY_NAME=lambda-log-ingestion-run-policy
 ```
 
-#### 1.1 Create buckets + folders + encryption
+### 1.1 Create buckets + folders + encryption
 
 ```bash
 aws s3 mb s3://$RAW_BUCKET    --region $REGION
@@ -68,7 +68,7 @@ aws s3api put-object --bucket $TMP_BUCKET --key athena/
 aws s3api put-bucket-versioning --bucket $RAW_BUCKET --versioning-configuration Status=Enabled
 ```
 
-#####  1.2 DynamoDB table for run logs
+###  1.2 DynamoDB table for run logs
 
 ```bash
 aws dynamodb create-table \
@@ -81,7 +81,7 @@ aws dynamodb create-table \
 * **pk:** `SRC#<source>` (e.g., `SRC#orders`)
 * **sk:** `INGEST#<ISO8601>#<etag|noetag>`
 
-#### 1.3 IAM role + policy for Lambda
+### 1.3 IAM role + policy for Lambda
 
 ```bash
 # Trust policy (Lambda can assume)
@@ -118,7 +118,7 @@ JSON
 aws iam put-role-policy --role-name $ROLE_NAME --policy-name $POLICY_NAME --policy-document file://policy.json
 ```
 
-#### 1.4 Create Lambda (with code)
+### 1.4 Create Lambda (with code)
 
 ```bash
 # Minimal, idempotent-ish handler
@@ -199,7 +199,7 @@ aws lambda create-function \
   --region $REGION
 ```
 
-#### 1.5 Allow S3 to invoke Lambda
+### 1.5 Allow S3 to invoke Lambda
 
 ```bash
 aws lambda add-permission \
@@ -211,7 +211,7 @@ aws lambda add-permission \
   --region $REGION
 ```
 
-#### 1.6 Configure S3 event notifications → Lambda
+### 1.6 Configure S3 event notifications → Lambda
 
 > Single rule on the `retail/` prefix (covers orders/customers/products).
 
@@ -238,7 +238,7 @@ aws s3api put-bucket-notification-configuration \
 
 ---
 
-#### 1.7 Quick test
+### 1.7 Quick test
 
 ```bash
 # upload a tiny test file under retail/orders/
@@ -273,7 +273,7 @@ aws logs get-log-events \
 
 ---
 
-#### 1.8 (Optional) Narrow to per-source rules
+### 1.8 (Optional) Narrow to per-source rules
 
 If you prefer separate rules per area:
 
@@ -287,7 +287,7 @@ done
 ---
 
 
-# 2) Land (Immutable) — make it real & date-partitioned
+## 2) Land (Immutable) — make it real & date-partitioned
 
 ### 2.1 Pick an ingest date (same for all three files)
 
@@ -309,7 +309,7 @@ Your Step 1 Lambda will still log the runs in DynamoDB (now with the date partit
 
 ---
 
-# 3) Transform (Batch) — the exact point it happens
+## 3) Transform (Batch) — the exact point it happens
 
 Transform happens when you **run the Glue job** below. You can:
 
@@ -318,7 +318,7 @@ Transform happens when you **run the Glue job** below. You can:
 
 I’ll give you all-CLI artifacts for the Glue job (role + job + script) and both run modes.
 
-## 3.1 Create an IAM role for Glue
+### 3.1 Create an IAM role for Glue
 
 ```bash
 export GLUE_ROLE_NAME=retail-glue-role
@@ -355,7 +355,7 @@ JSON
 aws iam put-role-policy --role-name $GLUE_ROLE_NAME --policy-name retail-glue-inline --policy-document file://glue-inline-policy.json
 ```
 
-## 3.2 Create Glue databases (your Step 2, CLI only)
+### 3.2 Create Glue databases (your Step 2, CLI only)
 
 
 ```bash
@@ -363,7 +363,7 @@ aws glue create-database --database-input Name=retail_bronze || true
 aws glue create-database --database-input Name=retail_silver || true
 ```
 
-## 3.3 Create Athena workgroup (your Step 3, CLI only)
+### 3.3 Create Athena workgroup (your Step 3, CLI only)
 
 ```bash
 export ATHENA_WG=retail-wg
@@ -394,9 +394,9 @@ aws athena get-work-group --work-group "$ATHENA_WG" \
 
 (Ensure Athena engine v3 in Console once; WG defaults to latest engine in most regions.)
 
-## 3.4 Glue Spark job (Iceberg) — script + job creation
+### 3.4 Glue Spark job (Iceberg) — script + job creation
 
-### 3.4.1 Save the PySpark script locally
+#### 3.4.1 Save the PySpark script locally
 
 ```bash
 # retail_bronze_to_silver.py (v5)
@@ -491,14 +491,14 @@ print("Transform complete ✅")
 
 ```
 
-### 3.4.2 Upload the script to S3 (job script location)
+#### 3.4.2 Upload the script to S3 (job script location)
 
 ```bash
 export JOB_SCRIPT_BUCKET=$TMP_BUCKET   # reuse tmp bucket
 aws s3 cp retail_bronze_to_silver.py s3://$JOB_SCRIPT_BUCKET/jobs/retail_bronze_to_silver.py
 ```
 
-### 3.4.3 Create the Glue job (Glue 4.0 / Spark 3.3)
+#### 3.4.3 Create the Glue job (Glue 4.0 / Spark 3.3)
 
 ```bash
 export SILVER_WAREHOUSE="s3://$SILVER_BUCKET/"
@@ -531,7 +531,7 @@ aws glue create-job \
 
 > Note: I dropped Great Expectations here to keep the job creation minimal. You can add `--additional-python-modules` later once students see a successful baseline.
 
-## 3.5 Run the transform (MANUAL)
+### 3.5 Run the transform (MANUAL)
 
 ### Allow read on the script bucket/prefix
 
@@ -603,16 +603,16 @@ aws glue start-job-run --job-name $GLUE_JOB
 aws glue get-job-runs --job-name $GLUE_JOB --max-results 1 --query 'JobRuns[0].JobRunState'
 ```
 
-## 3.6 Run the transform (AUTOMATIC)
+### 3.6 Run the transform (AUTOMATIC)
 
-### A) Daily at 01:15 UTC (schedule)
+#### A) Daily at 01:15 UTC (schedule)
 
 Assignment
 
 
-### B) Event-driven (whenever a new **orders** object lands)
+#### B) Event-driven (whenever a new **orders** object lands)
 
-#### 1) Create the starter Lambda (IAM + code)
+##### 1) Create the starter Lambda (IAM + code)
 
 ```bash
 export START_FN=start-glue-$GLUE_JOB
@@ -710,7 +710,7 @@ aws lambda create-function \
 
 ---
 
-####  2) Allow S3 to invoke the new Lambda
+#####  2) Allow S3 to invoke the new Lambda
 
 ```bash
 aws lambda add-permission \
@@ -724,7 +724,7 @@ aws lambda add-permission \
 
 ---
 
-####  3) Wire S3 bucket notifications → both Lambdas
+#####  3) Wire S3 bucket notifications → both Lambdas
 
 ```bash
 # Get ARNs for both Lambdas
@@ -798,7 +798,7 @@ else:
 
 ---
 
-# 4) Query (Athena v3) — sanity & time travel
+## 4) Query (Athena v3) — sanity & time travel
 
 ### One-time setup in Athena Console
 
@@ -1003,7 +1003,7 @@ aws s3 rb s3://$TMP_BUCKET --region $REGION 2>/dev/null || true
 echo "✅ Cleanup attempted. If anything remains, it likely has a dependency or naming mismatch."
 ```
 
-### Notes & tips
+## Notes & tips
 
 * **Iceberg tables first, then DBs**: if you try to delete a Glue database with tables still registered, it will fail.
 * **Workgroup**: Deleting `retail-wg` is optional; if you keep it, it costs nothing.
