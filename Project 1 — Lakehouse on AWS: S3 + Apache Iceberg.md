@@ -529,7 +529,7 @@ aws glue create-job \
   }'
 ```
 
-> Note: I dropped Great Expectations here to keep the job creation minimal. You can add `--additional-python-modules` later once students see a successful baseline.
+> Note: I have keep the job creation minimal. You can add `--additional-python-modules` later once you see a successful baseline.
 
 ### 3.5 Run the transform (MANUAL)
 
