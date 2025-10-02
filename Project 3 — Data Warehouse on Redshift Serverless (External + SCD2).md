@@ -2,6 +2,9 @@
 
 You’ll stand up a Redshift Serverless warehouse that: 
 
+<img width="979" height="555" alt="Screenshot 2025-10-02 at 16 50 18" src="https://github.com/user-attachments/assets/d688e424-7b4c-4745-ba2e-f200e358b527" />
+
+
 **1. Redshift Serverless Workgroup and Namespace** 
 - A running Serverless endpoint you can connect to (psql, Query Editor v2). 
 
