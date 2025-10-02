@@ -1,5 +1,5 @@
 ## DATA Governance
-Enforce fine-grained access to lakehouse data using Lake Formation. Implement tag-based policies, column masking, row filters, and cross-account data sharing—codified and tested in CI.
+Enforce fine-grained access to lakehouse data. Implement tag-based policies, column masking, row filters, and cross-account data sharing—codified and tested in CI.
 
 ## What you’ll build
 
