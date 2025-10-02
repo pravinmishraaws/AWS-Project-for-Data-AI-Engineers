@@ -1,4 +1,4 @@
-## Data Warehouse on Redshift Serverless (External + SCD2
+## Data Warehouse on Redshift Serverless (External + SCD2 )
 
 You’ll stand up a Redshift Serverless warehouse that: 
 
