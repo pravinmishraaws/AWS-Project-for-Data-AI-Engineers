@@ -399,7 +399,7 @@ aws athena get-work-group --work-group "$ATHENA_WG" \
 #### 3.4.1 Save the PySpark script locally
 
 ```bash
-# retail_bronze_to_silver.py (v5)
+# retail_bronze_to_silver.py (v7)
 import sys
 from awsglue.utils import getResolvedOptions
 from pyspark.sql import SparkSession, functions as F
@@ -410,7 +410,7 @@ RAW_BUCKET       = args['RAW_BUCKET']
 SILVER_DB        = args['SILVER_DB'] or 'retail_silver'
 SILVER_WAREHOUSE = args['SILVER_WAREHOUSE']  # e.g. s3://org-demo-lake-silver-<name>/
 
-print("SCRIPT_VERSION = v5")
+print("SCRIPT_VERSION = v7")
 print("RAW_BUCKET       =", RAW_BUCKET)
 print("SILVER_DB        =", SILVER_DB)
 print("SILVER_WAREHOUSE =", SILVER_WAREHOUSE)
@@ -420,51 +420,88 @@ spark = (
     SparkSession.builder
     .appName("retail_bronze_to_silver")
     .config("spark.sql.sources.partitionOverwriteMode", "dynamic")
-    # Iceberg + Glue Catalog wiring (set it here to avoid surprises)
+    # Iceberg + Glue Catalog wiring
     .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
     .config("spark.sql.catalog.glue_catalog", "org.apache.iceberg.spark.SparkCatalog")
     .config("spark.sql.catalog.glue_catalog.warehouse", SILVER_WAREHOUSE)
     .config("spark.sql.catalog.glue_catalog.catalog-impl", "org.apache.iceberg.aws.glue.GlueCatalog")
     .config("spark.sql.catalog.glue_catalog.io-impl", "org.apache.iceberg.aws.s3.S3FileIO")
-    # Keep spark_catalog on Iceberg too; type=hive is fine for Glue
     .config("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkSessionCatalog")
     .config("spark.sql.catalog.spark_catalog.type", "hive")
     .getOrCreate()
 )
 
-def read_csv_or_fail(path):
+def read_csv(path):
     print("Reading:", path)
-    df = spark.read.option("header", True).csv(path)
-    n = df.limit(1).count()
-    print("Read OK, sample rows:", n)
+    df = (spark.read
+          .option("header", True)
+          .option("multiLine", False)
+          .csv(path))
+    return df
+
+def canon_cols(df):
+    # Trim + lowercase column names to avoid surprises
+    for c in df.columns:
+        df = df.withColumnRenamed(c, c.strip().lower())
     return df
 
 # ------------- READ RAW -------------
-orders_df    = read_csv_or_fail(f"s3://{RAW_BUCKET}/retail/orders/")
-customers_df = read_csv_or_fail(f"s3://{RAW_BUCKET}/retail/customers/")
-products_df  = read_csv_or_fail(f"s3://{RAW_BUCKET}/retail/products/")
+orders_df    = canon_cols(read_csv(f"s3://{RAW_BUCKET}/retail/orders/"))
+customers_df = canon_cols(read_csv(f"s3://{RAW_BUCKET}/retail/customers/"))
+products_df  = canon_cols(read_csv(f"s3://{RAW_BUCKET}/retail/products/"))
+
+# ------------- PARSERS -------------
+# Your file shows DD/MM/YYYY like 24/07/2025
+def parse_order_date(col):
+    return F.to_date(F.trim(col), 'dd/MM/yyyy')
 
 # ------------- CASTS -------------
-orders_typed = (orders_df
-    .withColumn("order_id",    F.col("order_id").cast("long"))
-    .withColumn("order_date",  F.to_date("order_date"))
-    .withColumn("customer_id", F.col("customer_id").cast("long"))
-    .withColumn("product_id",  F.col("product_id").cast("long"))
-    .withColumn("qty",         F.col("qty").cast("int"))
-    .withColumn("unit_price",  F.col("unit_price").cast("double"))
+orders_typed = (
+    orders_df
+      .withColumn("order_id",    F.col("order_id").cast("long"))
+      .withColumn("order_date_raw", F.col("order_date"))
+      .withColumn("order_date",  parse_order_date(F.col("order_date")))
+      .withColumn("customer_id", F.col("customer_id").cast("long"))
+      .withColumn("product_id",  F.col("product_id").cast("long"))
+      .withColumn("qty",         F.col("qty").cast("int"))
+      # Handle possible commas in decimals (e.g., "147,43")
+      .withColumn("unit_price",  F.regexp_replace(F.col("unit_price").cast("string"), ",", ".").cast("double"))
+      .withColumn("channel",     F.col("channel"))
 )
-customers_typed = customers_df.withColumn("customer_id", F.col("customer_id").cast("long"))
-products_typed  = products_df.withColumn("product_id",  F.col("product_id").cast("long"))
+
+customers_typed = customers_df.withColumn("customer_id", F.col("customer_id").cast("long")) \
+                              .withColumn("region", F.col("region"))
+products_typed  = products_df .withColumn("product_id",  F.col("product_id").cast("long")) \
+                              .withColumn("category", F.col("category"))
 
 # ------------- ENRICH -------------
-orders_enriched = (orders_typed
-    .join(customers_typed.select("customer_id","region"), on="customer_id", how="left")
-    .join(products_typed.select("product_id","category"), on="product_id", how="left")
-    .withColumn("sales_amount", F.col("qty") * F.col("unit_price"))
+orders_enriched = (
+    orders_typed
+      .join(customers_typed.select("customer_id","region"), on="customer_id", how="left")
+      .join(products_typed.select("product_id","category"), on="product_id", how="left")
+      .withColumn("sales_amount", F.col("qty").cast("double") * F.col("unit_price"))
 )
 
-# ------------- DDL & WRITE (Iceberg) -------------
-# DB is already created via Glue CLI; skip CREATE NAMESPACE to avoid Hive paths
+# ------------- SANITY CHECKS (fail fast) -------------
+total = orders_enriched.count()
+null_dates = orders_enriched.filter(F.col("order_date").isNull()).count()
+null_ids   = orders_enriched.filter(
+                F.col("order_id").isNull() |
+                F.col("customer_id").isNull() |
+                F.col("product_id").isNull()
+            ).count()
+
+print(f"[CHECK] rows={total}, null_order_date={null_dates}, null_key_fields={null_ids}")
+orders_enriched.select("order_id","order_date_raw","order_date").orderBy("order_id").show(10, False)
+
+if total == 0:
+    raise RuntimeError("No rows read from orders CSVs.")
+if null_dates > 0:
+    raise RuntimeError(f"order_date parse failed for {null_dates} rows (expected format dd/MM/yyyy).")
+if null_ids > 0:
+    raise RuntimeError(f"Found NULLs in key fields (order_id/customer_id/product_id).")
+
+# ------------- DDL (Iceberg) -------------
 spark.sql(f"""
     CREATE TABLE IF NOT EXISTS glue_catalog.{SILVER_DB}.orders_silver (
         order_id BIGINT,
@@ -482,12 +519,14 @@ spark.sql(f"""
     PARTITIONED BY (days(order_date))
 """)
 
+# ------------- WRITE (append) -------------
 (orders_enriched.select(
     "order_id","order_date","customer_id","product_id","qty","unit_price",
     "channel","region","category","sales_amount"
 ).writeTo(f"glue_catalog.{SILVER_DB}.orders_silver").append())
 
 print("Transform complete")
+
 
 ```
 
