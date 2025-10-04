@@ -1,5 +1,7 @@
 ## 1) Create S3 buckets
 
+<img width="914" height="514" alt="Screenshot 2025-10-04 at 21 24 24" src="https://github.com/user-attachments/assets/63d15a38-1435-4a7c-8ff3-c0a93f616167" />
+
 ### What we will be doing?
 * Create buckets + folders
 * Secure bucket setup (block public access, SSE-S3)
