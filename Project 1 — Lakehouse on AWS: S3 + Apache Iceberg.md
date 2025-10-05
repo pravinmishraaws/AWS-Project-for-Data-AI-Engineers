@@ -4,15 +4,6 @@
 
 ## 1) Create S3 buckets
 
-### What we will be doing?
-* Create buckets + folders
-* Secure bucket setup (block public access, SSE-S3)
-* Lake folder structure
-* DynamoDB as a run-log (lineage-adjacent)
-* Lambda packaging/deployment
-* S3→Lambda eventing and idempotent writes
-* Verifying ingestion lineage via DDB queries
-
 ## Step 1) Buckets + Auto Run-Logging (all CLI)
 
 > Works in **any region**. Replace `<yourname>` with something unique.
