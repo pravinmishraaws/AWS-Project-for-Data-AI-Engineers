@@ -860,83 +860,223 @@ else:
 
 ## 4) Query & Validate in Athena (Sanity + Time Travel)
 
-### One-time setup in Athena Console
 
-1. Top-right, switch **Workgroup** to **`retail-wg`** (engine v3).
-2. Click **Edit settings** and set the **query result location** to `s3://org-demo-lake-tmp-<yourname>/athena/`.
-3. Left panel:
 
-   * **Data source**: `AwsDataCatalog`
-   * **Database**: select **`retail_silver`**
 
-(If you prefer, you can also just run `USE retail_silver;` in the editor.)
+
+
+
+
+
+
+
+Love it—this lecture is where the project “clicks” for students. Here’s a **ready-to-read script** for your **Testing with Athena (sanity + time travel)** session. It keeps the tone simple, adds real use cases, and cross-checks against the original datasets.
 
 ---
 
-### Sanity & time-travel queries
+# Lecture: Query & Validate in Athena (Sanity + Time Travel)
 
-Paste these exactly (they qualify the DB, so they work even if the left panel DB isn’t switched):
+**Welcome back!**
+Now that our Silver Iceberg table is ready, we’ll **test it in Athena**.
+Our goals are simple:
+
+1. Confirm the table looks right (shape, counts, dates).
+2. Run a few **business questions** (channel, region, category).
+3. Prove **partition pruning** works (fast = cheap).
+4. Explore **snapshots** and **time travel** for reproducibility.
+
+---
+
+## One-time Athena setup (60 sec)
+
+1. In Athena, **switch Workgroup** to `retail-wg` (Engine v3).
+2. In **Edit settings**, set Query results to:
+   `s3://org-demo-lake-tmp-<yourname>/athena/`
+3. Left panel → **Data source:** AwsDataCatalog → **Database:** `retail_silver`
+   *(or just run `USE retail_silver;` in the editor)*
+
+---
+
+## A. Basic sanity checks
+
+> Why: make sure the table exists, has rows, and dates parse correctly.
 
 ```sql
--- sanity: a few rows
-SELECT * FROM retail_silver.orders_silver LIMIT 10;
+-- peek a few rows
+SELECT * FROM retail_silver.orders_silver
+LIMIT 10;
 
--- last 7 days sales (by order_date)
-SELECT date_trunc('day', order_date) AS d, sum(sales_amount) AS sales
+-- total rows (should match number of landed orders after your transforms)
+SELECT COUNT(*) AS rows
+FROM retail_silver.orders_silver;
+
+-- date range present
+SELECT MIN(order_date) AS min_date, MAX(order_date) AS max_date
+FROM retail_silver.orders_silver;
+
+-- check key fields are not null
+SELECT
+  SUM(CASE WHEN order_id    IS NULL THEN 1 ELSE 0 END) AS null_order_id,
+  SUM(CASE WHEN customer_id IS NULL THEN 1 ELSE 0 END) AS null_customer_id,
+  SUM(CASE WHEN product_id  IS NULL THEN 1 ELSE 0 END) AS null_product_id,
+  SUM(CASE WHEN order_date  IS NULL THEN 1 ELSE 0 END) AS null_order_date
+FROM retail_silver.orders_silver;
+```
+
+**Connect to source files:**
+
+* Your **orders.csv** screenshot shows thousands of rows (header + ~8,772).
+* **customers.csv** shows **501** customers; **products.csv** shows **201** products.
+  So in Silver you should see:
+* `COUNT(DISTINCT customer_id) ≤ 501`
+* `COUNT(DISTINCT product_id) ≤ 201`
+
+```sql
+SELECT COUNT(DISTINCT customer_id) AS distinct_customers,
+       COUNT(DISTINCT product_id)  AS distinct_products
+FROM retail_silver.orders_silver;
+```
+
+---
+
+## B. Referential sanity (joins “took effect”)
+
+> Why: prove enrichment worked—region and category must be present.
+
+```sql
+-- any missing enrichment?
+SELECT
+  SUM(CASE WHEN region   IS NULL THEN 1 ELSE 0 END) AS missing_region,
+  SUM(CASE WHEN category IS NULL THEN 1 ELSE 0 END) AS missing_category
+FROM retail_silver.orders_silver;
+```
+
+Expected: **0** (unless your raw files had IDs with no match).
+
+---
+
+## C. Business questions (real use cases)
+
+> These are the questions your analysts will ask. Show them how easy it is now.
+
+### 1) Sales by day (last 7 days)
+
+```sql
+SELECT order_date AS day, SUM(sales_amount) AS sales
 FROM retail_silver.orders_silver
 GROUP BY 1
 ORDER BY 1 DESC
 LIMIT 7;
+```
 
--- list Iceberg snapshots for this table
-SELECT *
-FROM retail_silver."orders_silver$snapshots"
-ORDER BY committed_at DESC
-LIMIT 5;
+### 2) Sales by channel (web / store / mobile)
 
--- time travel using a snapshot id (copy one from the query above)
-SELECT count(*)
+```sql
+SELECT channel, ROUND(SUM(sales_amount), 2) AS sales
 FROM retail_silver.orders_silver
-FOR VERSION AS OF <snapshot_id>;
+GROUP BY 1
+ORDER BY sales DESC;
+```
 
--- or time travel by timestamp (UTC)
-SELECT *
+**Tie-back to source:** `channel` comes directly from **orders.csv**.
+
+### 3) Sales by region (comes from Customers)
+
+```sql
+SELECT region, ROUND(SUM(sales_amount), 2) AS sales
 FROM retail_silver.orders_silver
-FOR TIMESTAMP AS OF TIMESTAMP '2025-09-22 00:00:00'
+GROUP BY 1
+ORDER BY sales DESC;
+```
+
+**Tie-back to source:** `region` comes from **customers.csv** via the join.
+
+### 4) Top product categories (comes from Products)
+
+```sql
+SELECT category, ROUND(SUM(sales_amount), 2) AS sales, SUM(qty) AS units
+FROM retail_silver.orders_silver
+GROUP BY 1
+ORDER BY sales DESC
 LIMIT 10;
+```
 
--- (optional) table history view
-SELECT *
-FROM retail_silver."orders_silver$history"
-ORDER BY made_current_at DESC
-LIMIT 5;
+**Tie-back to source:** `category` comes from **products.csv** via the join.
 
--- (optional) partition pruning check
+### 5) Recompute check (trust the `sales_amount`)
+
+```sql
+-- compute again from qty * unit_price and compare
+WITH recompute AS (
+  SELECT SUM(qty * unit_price) AS calc_sales
+  FROM retail_silver.orders_silver
+),
+stored AS (
+  SELECT SUM(sales_amount) AS stored_sales
+  FROM retail_silver.orders_silver
+)
+SELECT stored.stored_sales, recompute.calc_sales,
+       ROUND(stored.stored_sales - recompute.calc_sales, 6) AS diff
+FROM stored CROSS JOIN recompute;
+```
+
+Expected: **diff ~ 0** (tiny rounding differences are fine).
+
+---
+
+## D. Partition pruning (performance & cost)
+
+> We partitioned by **days(order_date)**. Queries that filter by date should scan only the needed day folders.
+
+```sql
 EXPLAIN
-SELECT sum(sales_amount)
+SELECT SUM(sales_amount)
 FROM retail_silver.orders_silver
 WHERE order_date BETWEEN DATE '2025-09-15' AND DATE '2025-09-21';
 ```
 
-### What to expect / quick explanations
+Look for a plan that mentions scanning only a **small subset** (days in the filter).
+**Outcome:** faster query + fewer bytes scanned.
 
-* **`retail_silver.orders_silver`** is your curated Iceberg table (ACID, partitioned by `days(order_date)`).
-* **`$snapshots`** is a system table that lists each commit (snapshot\_id, parent\_id, committed\_at, summary).
-* **Time travel**:
+---
 
-  * `FOR VERSION AS OF <snapshot_id>` queries the table **as it was at that snapshot**.
-  * `FOR TIMESTAMP AS OF TIMESTAMP '…'` picks the latest snapshot at/before that time.
-* **Partition pruning**: with the `WHERE order_date BETWEEN …` filter, the `EXPLAIN` plan should indicate scanning only relevant day partitions (smaller bytes scanned).
+## E. Snapshots & time travel (reproducibility)
 
-### If you don’t see the table
+> Iceberg keeps a history of table snapshots. We can query “what did we know at time X?”
 
-* Run:
+1. **List snapshots**
 
-  ```sql
-  SHOW TABLES IN retail_silver;
-  SHOW CREATE TABLE retail_silver.orders_silver;
-  ```
-* If `SHOW TABLES` returns nothing, re-check in Glue Catalog (Database `retail_silver`) that `orders_silver` exists. If it does, make sure Athena is on **engine v3** (the `retail-wg` workgroup).
+```sql
+SELECT snapshot_id, parent_id, committed_at, operation, summary
+FROM retail_silver."orders_silver$snapshots"
+ORDER BY committed_at DESC
+LIMIT 5;
+```
+
+2. **Time travel by snapshot id**
+
+```sql
+-- copy a snapshot_id from the query above
+SELECT COUNT(*) AS rows_at_that_time
+FROM retail_silver.orders_silver
+FOR VERSION AS OF <snapshot_id>;
+```
+
+3. **(Optional) History view**
+
+```sql
+SELECT *
+FROM retail_silver."orders_silver$history"
+ORDER BY made_current_at DESC
+LIMIT 5;
+```
+
+
+
+
+
+
+
 
 
 ## 5) Clean-up (to avoid charges)
