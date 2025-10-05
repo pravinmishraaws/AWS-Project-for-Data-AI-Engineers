@@ -858,7 +858,7 @@ else:
 
 ---
 
-## 4) Query (Athena v3) — sanity & time travel
+## 4) Query & Validate in Athena (Sanity + Time Travel)
 
 ### One-time setup in Athena Console
 
