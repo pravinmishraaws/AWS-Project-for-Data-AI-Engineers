@@ -400,6 +400,7 @@ from awsglue.utils import getResolvedOptions
 from pyspark.sql import SparkSession, functions as F
 
 # ------------- JOB ARGS -------------
+# Reads runtime parameters to get Buckets
 args = getResolvedOptions(sys.argv, ['RAW_BUCKET', 'SILVER_DB', 'SILVER_WAREHOUSE'])
 RAW_BUCKET       = args['RAW_BUCKET']
 SILVER_DB        = args['SILVER_DB'] or 'retail_silver'
@@ -411,6 +412,7 @@ print("SILVER_DB        =", SILVER_DB)
 print("SILVER_WAREHOUSE =", SILVER_WAREHOUSE)
 
 # ------------- SPARK SESSION -------------
+# Creates a Spark session that’s aware of Apache Iceberg and AWS Glue Catalog.
 spark = (
     SparkSession.builder
     .appName("retail_bronze_to_silver")
@@ -426,6 +428,7 @@ spark = (
     .getOrCreate()
 )
 
+# Reads a CSV file from S3 with headers enabled.
 def read_csv(path):
     print("Reading:", path)
     df = (spark.read
@@ -434,6 +437,7 @@ def read_csv(path):
           .csv(path))
     return df
 
+#Normalizes column names
 def canon_cols(df):
     # Trim + lowercase column names to avoid surprises
     for c in df.columns:
@@ -441,16 +445,24 @@ def canon_cols(df):
     return df
 
 # ------------- READ RAW -------------
+# Reads the bronze layer CSVs
 orders_df    = canon_cols(read_csv(f"s3://{RAW_BUCKET}/retail/orders/"))
 customers_df = canon_cols(read_csv(f"s3://{RAW_BUCKET}/retail/customers/"))
 products_df  = canon_cols(read_csv(f"s3://{RAW_BUCKET}/retail/products/"))
 
 # ------------- PARSERS -------------
+# Helper to convert order_date strings like "24/07/2025" into proper DATE types.
 # Your file shows DD/MM/YYYY like 24/07/2025
 def parse_order_date(col):
     return F.to_date(F.trim(col), 'dd/MM/yyyy')
 
 # ------------- CASTS -------------
+# Cleans and casts columns into correct data types.
+# Notable logic:
+# Converts strings to numeric types (order_id, qty, unit_price).
+# Fixes European decimal formats (commas → dots).
+# Adds parsed order_date.
+# ✅ Ensures data integrity before transformations.
 orders_typed = (
     orders_df
       .withColumn("order_id",    F.col("order_id").cast("long"))
@@ -470,6 +482,10 @@ products_typed  = products_df .withColumn("product_id",  F.col("product_id").cas
                               .withColumn("category", F.col("category"))
 
 # ------------- ENRICH -------------
+# Adds lookup and business context:
+# Enriches orders with customer region and product category.
+# Calculates a new field: sales_amount = qty * unit_price.
+# ✅ Moves the data from raw to business-ready (silver-tier).
 orders_enriched = (
     orders_typed
       .join(customers_typed.select("customer_id","region"), on="customer_id", how="left")
@@ -478,6 +494,11 @@ orders_enriched = (
 )
 
 # ------------- SANITY CHECKS (fail fast) -------------
+# Performs data quality checks before writing:
+# Ensures rows exist.
+# Validates that critical fields (order_id, order_date, etc.) are not null.
+# If validation fails, the job raises an error and stops (fail-fast).
+# ✅ Protects downstream silver data from corruption.
 total = orders_enriched.count()
 null_dates = orders_enriched.filter(F.col("order_date").isNull()).count()
 null_ids   = orders_enriched.filter(
@@ -515,6 +536,7 @@ spark.sql(f"""
 """)
 
 # ------------- WRITE (append) -------------
+# Writes the clean, typed, enriched dataset to the Silver Iceberg table in append mode.
 (orders_enriched.select(
     "order_id","order_date","customer_id","product_id","qty","unit_price",
     "channel","region","category","sales_amount"
