@@ -860,34 +860,7 @@ else:
 
 ## 4) Query & Validate in Athena (Sanity + Time Travel)
 
-
-
-
-
-
-
-
-
-
-
-Love it—this lecture is where the project “clicks” for students. Here’s a **ready-to-read script** for your **Testing with Athena (sanity + time travel)** session. It keeps the tone simple, adds real use cases, and cross-checks against the original datasets.
-
----
-
-# Lecture: Query & Validate in Athena (Sanity + Time Travel)
-
-**Welcome back!**
-Now that our Silver Iceberg table is ready, we’ll **test it in Athena**.
-Our goals are simple:
-
-1. Confirm the table looks right (shape, counts, dates).
-2. Run a few **business questions** (channel, region, category).
-3. Prove **partition pruning** works (fast = cheap).
-4. Explore **snapshots** and **time travel** for reproducibility.
-
----
-
-## One-time Athena setup (60 sec)
+## One-time Athena setup
 
 1. In Athena, **switch Workgroup** to `retail-wg` (Engine v3).
 2. In **Edit settings**, set Query results to:
