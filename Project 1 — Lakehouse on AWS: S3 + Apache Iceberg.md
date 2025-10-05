@@ -887,13 +887,6 @@ FROM retail_silver.orders_silver;
 SELECT MIN(order_date) AS min_date, MAX(order_date) AS max_date
 FROM retail_silver.orders_silver;
 
--- check key fields are not null
-SELECT
-  SUM(CASE WHEN order_id    IS NULL THEN 1 ELSE 0 END) AS null_order_id,
-  SUM(CASE WHEN customer_id IS NULL THEN 1 ELSE 0 END) AS null_customer_id,
-  SUM(CASE WHEN product_id  IS NULL THEN 1 ELSE 0 END) AS null_product_id,
-  SUM(CASE WHEN order_date  IS NULL THEN 1 ELSE 0 END) AS null_order_date
-FROM retail_silver.orders_silver;
 ```
 
 **Connect to source files:**
