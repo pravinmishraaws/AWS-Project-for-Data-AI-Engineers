@@ -632,6 +632,10 @@ aws iam put-role-policy \
 
 
 ```bash
+# Upload Order Transcational Data
+aws s3 cp retail_data/orders.csv    s3://$RAW_BUCKET/retail/orders/ingest_date=$INGEST_DATE/orders.csv
+
+# Start Glue Job manually
 aws glue start-job-run --job-name $GLUE_JOB
 # (Optionally poll)
 aws glue get-job-runs --job-name $GLUE_JOB --max-results 1 --query 'JobRuns[0].JobRunState'
