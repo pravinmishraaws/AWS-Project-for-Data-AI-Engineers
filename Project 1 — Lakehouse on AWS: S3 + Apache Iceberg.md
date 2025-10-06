@@ -894,8 +894,8 @@ FROM retail_silver.orders_silver;
 * Your **orders.csv** screenshot shows thousands of rows (header + ~8,772).
 * **customers.csv** shows **501** customers; **products.csv** shows **201** products.
   So in Silver you should see:
-* `COUNT(DISTINCT customer_id) ≤ 501`
-* `COUNT(DISTINCT product_id) ≤ 201`
+* `COUNT(DISTINCT customer_id) ≤ 500`
+* `COUNT(DISTINCT product_id) ≤ 200`
 
 ```sql
 SELECT COUNT(DISTINCT customer_id) AS distinct_customers,
