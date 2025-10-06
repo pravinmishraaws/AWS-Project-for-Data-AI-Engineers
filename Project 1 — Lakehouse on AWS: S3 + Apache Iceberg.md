@@ -1103,6 +1103,12 @@ LIMIT 5;
 SELECT COUNT(*) AS rows_at_that_time
 FROM retail_silver.orders_silver
 FOR VERSION AS OF <snapshot_id>;
+
+SELECT *
+FROM retail_silver.orders_silver
+FOR VERSION AS OF <snapshot_id>;
+LIMIT 10;
+
 ```
 #### What it does:
 - Queries the table as it existed at a specific snapshot.
