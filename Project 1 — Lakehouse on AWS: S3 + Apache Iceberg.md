@@ -1085,6 +1085,17 @@ ORDER BY committed_at DESC
 LIMIT 5;
 ```
 
+### What it does:
+- Lists the most recent snapshots of the table.
+- Each row is a snapshot of the table after a commit.
+
+#### Why it matters:
+- Gives a timeline of table changes.
+- Lets you see what changed (APPEND, DELETE, MERGE) and when.
+- Useful for auditing, debugging, or reproducing queries.
+
+> This query lists recent table snapshots with metadata, so we can track how the table evolved and know exactly what data existed at specific points in time.
+
 2. **Time travel by snapshot id**
 
 ```sql
@@ -1093,6 +1104,16 @@ SELECT COUNT(*) AS rows_at_that_time
 FROM retail_silver.orders_silver
 FOR VERSION AS OF <snapshot_id>;
 ```
+### What it does:
+- Queries the table as it existed at a specific snapshot.
+- You can run **any query** on a historical snapshot, **not just COUNT.**
+
+#### Why it matters:
+- Guarantees reproducibility: you can **rerun queries** and **get exact same results** as at the time of the snapshot.
+- Useful for audit trails, bug investigations, or comparing datasets over time.
+
+> This query retrieves the table as it existed at a specific snapshot, enabling reproducible queries and historical analysis.
+
 
 3. **(Optional) History view**
 
@@ -1102,6 +1123,20 @@ FROM retail_silver."orders_silver$history"
 ORDER BY made_current_at DESC
 LIMIT 5;
 ```
+
+### What it does:
+- Shows a table-level history of operations, slightly different from snapshots.
+- Includes metadata like:
+  - When snapshots were made current.
+  - What operations updated the table.
+  - Who performed the change (depending on system setup).
+
+#### Why it matters:
+- Gives a human-readable audit trail.
+- Shows the timeline of changes affecting the table, not just raw snapshot IDs.
+
+> This query provides a history of table operations, showing when snapshots were made current and what operations affected the table, helping with auditing and reproducibility.
+
 
 ## 5) Clean-up (to avoid charges)
 
