@@ -1004,6 +1004,72 @@ WHERE order_date BETWEEN DATE '2025-09-15' AND DATE '2025-09-21';
 Look for a plan that mentions scanning only a **small subset** (days in the filter).
 **Outcome:** faster query + fewer bytes scanned.
 
+
+### 1. What Partition Pruning Means
+
+Our table is **partitioned by `order_date`** (by day).
+That means the data is physically stored in folders like:
+
+```
+orders_silver/order_date=2025-09-15/
+orders_silver/order_date=2025-09-16/
+...
+orders_silver/order_date=2025-09-21/
+```
+
+So, when you query:
+
+```sql
+WHERE order_date BETWEEN DATE '2025-09-15' AND DATE '2025-09-21'
+```
+
+you want the engine (Trino/Athena/Spark, etc.) to **read only those 7 folders**, **not** all partitions for the year.
+
+This is what partition pruning does: **it avoids scanning irrelevant partitions, saving time and cost.**
+
+---
+
+### 2. Reading the Plan You Got
+
+Here’s the key part of your query plan:
+
+```
+└─ TableScan[table = awsdatacatalog$iceberg-aws:retail_silver.orders_silver$data@1302511250264509922
+   constraint on [order_date]]
+   ...
+   2:order_date:date
+       :: [[2025-09-15, 2025-09-21]]
+```
+
+This line **explain everythings**
+
+#### ➤ What it means:
+
+* **`TableScan`** → This is where your engine reads data from the underlying Iceberg table.
+* **`constraint on [order_date]`** → This shows the filter is being pushed down to the scan.
+* **`[[2025-09-15, 2025-09-21]]`** → This is the exact range being scanned.
+
+So the scan **is limited** to that date range — **only those partitions** are read.
+
+If partition pruning weren’t working, you’d see:
+
+
+**constraint on [order_date]: none**
+
+or 
+
+**no mention** of the date filter at all — meaning it would scan **all partitions**.
+
+---
+
+### 3. Why It Matters for Performance & Cost
+
+When partition pruning works:
+
+* **Fewer partitions scanned** → fewer files read.
+* **Less data scanned** → lower AWS Athena or compute cost.
+* **Faster queries** → because IO is minimized.
+
 ---
 
 ## E. Snapshots & time travel (reproducibility)
@@ -1036,14 +1102,6 @@ FROM retail_silver."orders_silver$history"
 ORDER BY made_current_at DESC
 LIMIT 5;
 ```
-
-
-
-
-
-
-
-
 
 ## 5) Clean-up (to avoid charges)
 
