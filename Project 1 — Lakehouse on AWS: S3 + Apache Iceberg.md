@@ -905,7 +905,7 @@ FROM retail_silver.orders_silver;
 
 ---
 
-## B. Referential sanity (joins “took effect”)
+**Referential sanity (joins “took effect”)**
 
 > Why: prove enrichment worked—region and category must be present.
 
@@ -921,7 +921,7 @@ Expected: **0** (unless your raw files had IDs with no match).
 
 ---
 
-## C. Business questions (real use cases)
+## B. Business questions (real use cases)
 
 > These are the questions your analysts will ask. Show them how easy it is now.
 
@@ -990,7 +990,7 @@ Expected: **diff ~ 0** (tiny rounding differences are fine).
 
 ---
 
-## D. Partition pruning (performance & cost)
+## C. Partition pruning (performance & cost)
 
 > We partitioned by **days(order_date)**. Queries that filter by date should scan only the needed day folders.
 
@@ -1072,7 +1072,7 @@ When partition pruning works:
 
 ---
 
-## E. Snapshots & time travel (reproducibility)
+## D. Snapshots & time travel (reproducibility)
 
 > Iceberg keeps a history of table snapshots. We can query “what did we know at time X?”
 
