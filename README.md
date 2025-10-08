@@ -12,8 +12,7 @@ By the end, you’ll have hands-on experience across the modern AWS data stack (
 
 ## AWS Technical Architecture
 
-<img width="714" height="403" alt="Screenshot 2025-10-08 at 12 38 59" src="https://github.com/user-attachments/assets/a1ed6b27-ee95-43af-af5b-22cfad4e5426" />
-
+<img width="1434" height="800" alt="Screenshot 2025-10-08 at 15 06 52" src="https://github.com/user-attachments/assets/0338e035-82c6-4139-88a1-e9616b04123a" />
 
 ---
 
