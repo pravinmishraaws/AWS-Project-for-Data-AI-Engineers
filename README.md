@@ -44,10 +44,10 @@ Operate an end-to-end batch pipeline. Orchestrate ingest → DQ → publish, han
 
 ---
 
-## Project 5 — Real-Time CDC Streaming with Flink (Capstone)
+## Project 5 — AI/ML Readiness & Serving
 
 **Short Description**
-Build a near-real-time pipeline from **DMS (CDC)** → **Kinesis/MSK** → **Flink**. Apply event-time windows, watermarks, and exactly-once sinks to update **Iceberg upsert tables** and a DynamoDB serving store; publish a gold view to QuickSight. Includes savepoint-based rollback.
+Curate ML-friendly/feature-like tables, ensure reproducible training sets using Iceberg snapshots/time travel, and (optional) integrate SageMaker/Athena for model workflows.
 
 
 ---
